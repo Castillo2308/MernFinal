@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diseña tu Camiseta</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: white;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h2 {
+      color: black;
+      margin-bottom: 40px;
+      font-size: 2rem;
+    }
+
+    .camiseta-container {
+      display: inline-block;
+      background: #ffffff;
+      padding: 30px;
+      border: 4px dashed #000000;
+      border-radius: 16px;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+      margin-bottom: 30px;
+      transition: border-color 0.3s;
+    }
+
+    .camiseta-container:hover {
+      border-color: #faf6f6;
+    }
+
+    svg {
+      width: 500px; /* Aumentado el tamaño */
+      height: auto;
+      cursor: pointer;
+    }
+
+    .parte-camiseta:hover {
+      stroke: #0e3f21;
+      stroke-width: 0.5;
+      opacity: 0.8;
+    }
+
+    #color-picker {
+      width: 80px;
+      height: 50px;
+      border: none;
+      margin: 10px;
+      cursor: pointer;
+    }
+
+    button {
+      padding: 15px 25px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: blue;
+      color: rgb(255, 255, 255);
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: white;
+    }
+
+    #btn-limpiar {
+      background-color: blue;
+    }
+
+    #btn-limpiar:hover {
+      background-color: white;
+    }
+  </style>
+</head>
+<body>
+  <h2>Diseña tu Camiseta</h2>
+
+  <div class="camiseta-container">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="1 2 26 14" id="camiseta-svg">
+      <path class="parte-camiseta" id="manga-izquierda" d="M 4 8 M 5 3 L 5 6 L 3 7 L 1 5" fill="#000000" />
+      <path class="parte-camiseta" id="torso" d="M 9 5 L 7 3 L 5 3 L 5 6 L 5 12 L 13 12 L 13 6 L 13 3 L 11 3" fill="#000000" />
+      <path class="parte-camiseta" id="manga-derecha" d="M 13 6 L 13 3 L 17 5 L 15 7" fill="#000000" />
+      <path class="parte-camiseta" id="cuelloizq" d="M 8 2 L 7 3 L 9 5 L 8 3" fill="#000000" />
+      <path class="parte-camiseta" id="cuelloder" d="M 10 2 L 11 3 L 9 5 L 10 3 M 1 4" fill="#000000" />
+    </svg>
+  </div>
+
+  <div>
+    <input type="color" id="color-picker" value="#ffffff" />
+    <button id="btn-guardar">Guardar Diseño</button>
+    <button id="btn-modificar-real">Modificar Diseño</button>
+    <button id="btn-limpiar">Reiniciar Colores</button>
+    <input type="hidden" id="camiseta-id">
+  </div>
+  <h3>Mis camisetas</h3>
+  <table id="tabla-camisetas" class="display">
+  <thead>
+    <tr>
+      <th>Miniatura</th>
+      <th>Fecha creación</th>
+      <th>Creador</th>  <!-- Nueva columna para el nombre/correo del creador -->
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- El cuerpo se llenará dinámicamente -->
+  </tbody>
+</table>
+
+<!-- Incluimos jQuery y DataTables JS/CSS en la página (por ejemplo via CDN) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" />
+
+
+
+  <script>
+    const svg = document.getElementById('camiseta-svg');
+    const colorPicker = document.getElementById('color-picker');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const btnModificarReal = document.getElementById('btn-modificar-real');
+    const btnLimpiar = document.getElementById('btn-limpiar');
+    const camisetaIdInput = document.getElementById('camiseta-id');
+    btnModificarReal.style.display = 'none'; // Ocultar botón de modificar al inicio
+
+    let parteSeleccionada = null;
+
+    svg.addEventListener('click', (event) => {
+      if (event.target.classList.contains('parte-camiseta')) {
+        parteSeleccionada = event.target;
+        const colorActual = parteSeleccionada.getAttribute('fill');
+        colorPicker.value = colorActual;
+      }
+    });
+
+    colorPicker.addEventListener('input', (event) => {
+      if (parteSeleccionada) {
+        parteSeleccionada.setAttribute('fill', event.target.value);
+      }
+    });
+
+    btnLimpiar.addEventListener('click', () => {
+      document.querySelectorAll('.parte-camiseta').forEach(el => {
+        el.setAttribute('fill', '#ffffff');
+      });
+    });
+    btnGuardar.addEventListener('click', async () => {
+  // Obtener colores actuales de cada parte
+  const diseño = {
+   torsoColor: document.getElementById('torso').getAttribute('fill'),
+    mangaIzqColor: document.getElementById('manga-izquierda').getAttribute('fill'),
+    mangaDerColor: document.getElementById('manga-derecha').getAttribute('fill'),
+   cuelloColorder: document.getElementById('cuelloder').getAttribute('fill'),
+   cuelloColorizq: document.getElementById('cuelloizq').getAttribute('fill')
+  };
+  // Enviar via fetch al servidor
+  const resp = await fetch('/api/camisetas', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + localStorage.getItem('token')
+    },
+    body: JSON.stringify(diseño)
+  });
+  const data = await resp.json();
+  console.log('Diseño guardado en servidor:', data);
+  alert('Camiseta guardada exitosamente!');
+  cargarTabla(); // Recargar la tabla para ver la nueva camiseta
+});
+btnModificarReal.addEventListener('click', async () => {
+
+  const diseño = obtenerColoresActuales();
+  const id =camisetaIdInput.value;
+  const resp = await fetch(`/api/camisetas/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + localStorage.getItem('token')
+    },
+    body: JSON.stringify(diseño)
+  });
+  await resp.json();
+  cargarTabla(); // Recargar la tabla para ver los cambios
+  btnLimpiar.click(); // Limpiar los colores después de modificar
+  btnModificarReal.style.display = 'none';
+  btnGuardar.style.display = 'inline'; // Mostrar el botón de guardar nuevamente
+});
+function obtenerColoresActuales() {
+  return {
+    torsoColor: document.getElementById('torso').getAttribute('fill'),
+    mangaIzqColor: document.getElementById('manga-izquierda').getAttribute('fill'),
+    mangaDerColor: document.getElementById('manga-derecha').getAttribute('fill'),
+    cuelloColorder: document.getElementById('cuelloder').getAttribute('fill'),
+    cuelloColorizq: document.getElementById('cuelloizq').getAttribute('fill')
+  };
+}
+// Genera un SVG miniatura como string para mostrar en la tabla
+function generarMiniatura(c) {
+return `
+<svg class="miniatura" viewBox="1 2 26 14">
+<path d="M 4 8 M 5 3 L 5 6 L 3 7 L 1 5" fill="${c.mangaIzqColor}" />
+<path d="M 9 5 L 7 3 L 5 3 L 5 6 L 5 12 L 13 12 L 13 6 L 13 3 L 11 3" fill="${c.torsoColor}" />
+<path d="M 13 6 L 13 3 L 17 5 L 15 7" fill="${c.mangaDerColor}" />
+<path d="M 8 2 L 7 3 L 9 5 L 8 3" fill="${c.cuelloIzqColor}" />
+<path d="M 10 2 L 11 3 L 9 5 L 10 3 M 1 4" fill="${c.cuelloDerColor}" />
+</svg>`;
+}
+async function cargarTabla() {
+  const resp = await fetch('/api/camisetas', {
+    headers: {
+      'Authorization': 'Bearer ' + localStorage.getItem('token')
+    }
+  });
+  const camisetas = await resp.json();
+  console.log(camisetas)
+  const tabla = $('#tabla-camisetas').DataTable();
+
+// Suponiendo que tenemos la lista de camisetas disponible en la variable `camisetas` (por ejemplo, insertada desde el servidor o recibida via AJAX):
+camisetas.forEach(c => {
+  // Determinar el nombre a mostrar para el creador de la camiseta
+  let nombreCreador = 'Desconocido';
+  if (c.creador && typeof c.creador === 'object') {
+    // Si 'creador' es un objeto, tomamos su nombre, o correo si no hay nombre, o 'Usuario' genérico
+    nombreCreador = c.creador.nombre || c.creador.correo || 'Usuario';
+  } else if (typeof c.creador === 'string') {
+    // Si 'creador' es una cadena (por ejemplo un nombre ya o un ID en texto), lo usamos directamente
+    nombreCreador = c.creador;
+  }
+
+  // Añadir una nueva fila a la tabla con los datos de la camiseta
+  tabla.row.add([
+    generarMiniatura(c),                           // Columna 1: Miniatura de la camiseta (HTML de imagen/SVG)
+    new Date(c.fechaCreacion).toLocaleString(),    // Columna 2: Fecha de creación en formato legible
+    nombreCreador,                                 // Columna 3: Nombre/Correo del creador (nuevo campo)
+    // Columna 4: Botones de acciones (Modificar/Eliminar), con el ID incrustado en la llamada
+    `<button onclick='editarCamiseta("${c._id}")'>Modificar</button>
+     <button onclick='eliminarCamiseta("${c._id}")'>Eliminar</button>`
+  ]);
+});
+
+// Finalmente, dibujar/refrescar la tabla para que muestre las filas añadidas
+tabla.draw();
+}
+// Carga una camiseta en el diseño principal para edición
+async function editarCamiseta(id) {
+  const resp = await fetch(`/api/camisetas/${id}`, {
+    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+  });
+
+  const c = await resp.json();
+
+  // Cargar los colores en el SVG principal
+  document.getElementById('torso').setAttribute('fill', c.torsoColor);
+  document.getElementById('manga-izquierda').setAttribute('fill', c.mangaIzqColor);
+  document.getElementById('manga-derecha').setAttribute('fill', c.mangaDerColor);
+  document.getElementById('cuelloder').setAttribute('fill', c.cuelloDerColor);
+  document.getElementById('cuelloizq').setAttribute('fill', c.cuelloIzqColor);
+
+  // Guardar el ID actual y cambiar visibilidad de botones
+  camisetaIdInput.value = c._id;
+  btnGuardar.style.display = 'none';
+  btnModificarReal.style.display = 'inline';
+}
+// Elimina una camiseta después de confirmar
+async function eliminarCamiseta(id) {
+if (!confirm('¿Está seguro de eliminar esta camiseta?')) return;
+await fetch(`/api/camisetas/${id}`, {
+method: 'DELETE',
+headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+});
+cargarTabla(); // Refresca tabla
+}
+
+
+
+
+  $(document).ready(() => {
+    $('#tabla-camisetas').DataTable({responsive: true });
+    cargarTabla(); // Cargar camisetas al iniciar
+       
+  });
+
+  </script>
+</body>
+</html>
+
+

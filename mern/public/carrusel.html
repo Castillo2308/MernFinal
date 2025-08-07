@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carrusel de Camisetas</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      color: #222;
+      font-weight: 500;
+      margin: 2rem 0 1rem 0;
+      text-align: center;
+    }
+    .carousel {
+      display: flex;
+      flex-direction: row;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      padding: 2rem 1rem 2rem 1rem;
+      width: 100%;
+      max-width: 1100px;
+      box-sizing: border-box;
+      gap: 1.5rem;
+      scrollbar-width: thin;
+      scrollbar-color: #bdbdbd #eee;
+    }
+    .carousel::-webkit-scrollbar {
+      height: 10px;
+      background: #eee;
+      border-radius: 6px;
+      display: block;
+    }
+    .carousel::-webkit-scrollbar-thumb {
+      background: #bdbdbd;
+      border-radius: 6px;
+    }
+    .carousel::-webkit-scrollbar-thumb:hover {
+      background: #888;
+    }
+    .card {
+      flex-shrink: 0;
+      flex-basis: 220px;
+      scroll-snap-align: start;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      padding: 1.2rem 1rem 1rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 320px;
+      border: 1px solid #e0e0e0;
+      transition: box-shadow 0.2s;
+    }
+    .card:hover {
+      box-shadow: 0 4px 18px rgba(0,0,0,0.13);
+      border-color: #bdbdbd;
+    }
+    .miniatura {
+      width: 120px;
+      height: 90px;
+      margin-bottom: 0.7rem;
+      background: #f0f0f0;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .nombre-creador {
+      font-size: 1.08rem;
+      font-weight: 500;
+      color: #222;
+      margin-bottom: 0.3rem;
+      margin-top: 0.2rem;
+    }
+    .calificacion {
+      font-size: 0.97rem;
+      color: #444;
+      margin-bottom: 0.2rem;
+    }
+    .fecha {
+      font-size: 0.92rem;
+      color: #888;
+      margin-bottom: 0.7rem;
+    }
+    .botones-reaccion {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: auto;
+    }
+    .btn-like, .btn-dislike {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .btn-like {
+      background: #4caf50;
+      color: #fff;
+    }
+    .btn-like:hover {
+      background: #388e3c;
+    }
+    .btn-dislike {
+      background: #f44336;
+      color: #fff;
+    }
+    .btn-dislike:hover {
+      background: #c62828;
+    }
+    @media (max-width: 600px) {
+      .carousel {
+        padding: 1rem 0.2rem;
+        gap: 0.7rem;
+      }
+      .card {
+        flex-basis: 170px;
+        min-height: 250px;
+        padding: 0.7rem 0.5rem 0.7rem 0.5rem;
+      }
+      .miniatura {
+        width: 80px;
+        height: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Carrusel de Camisetas</h2>
+  <div class="carousel" id="carousel">
+    <!-- Las tarjetas se insertarán aquí dinámicamente con JS -->
+  </div>
+  <script>
+    function generarMiniatura(c) {
+      return `
+<svg class="miniatura" viewBox="1 2 26 14">
+<path d="M 4 8 M 5 3 L 5 6 L 3 7 L 1 5" fill="${c.mangaIzqColor}" />
+<path d="M 9 5 L 7 3 L 5 3 L 5 6 L 5 12 L 13 12 L 13 6 L 13 3 L 11 3" fill="${c.torsoColor}" />
+<path d="M 13 6 L 13 3 L 17 5 L 15 7" fill="${c.mangaDerColor}" />
+<path d="M 8 2 L 7 3 L 9 5 L 8 3" fill="${c.cuelloIzqColor}" />
+<path d="M 10 2 L 11 3 L 9 5 L 10 3 M 1 4" fill="${c.cuelloDerColor}" />
+</svg>`;
+    }
+
+    let autoScrollInterval = null;
+    let autoScrollPaused = false;
+
+    async function cargarCamisetas() {
+      try {
+        const resp = await fetch('/api/camisetas', {
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const camisetas = await resp.json();
+
+        const contenedor = document.getElementById('carousel');
+        contenedor.innerHTML = ''; // Limpiar carrusel
+
+        camisetas.forEach(c => {
+          let nombre = 'Desconocido';
+          if (c.creador && typeof c.creador === 'object') {
+            nombre = c.creador.nombre || c.creador.correo || 'Usuario';
+          } else if (typeof c.creador === 'string') {
+            nombre = c.creador;
+          }
+          const calificacion = typeof c.calificacion === 'number' ? c.calificacion.toFixed(1) : '0.0';
+
+          const card = document.createElement('div');
+          card.classList.add('card');
+          card.innerHTML = `
+            ${generarMiniatura(c)}
+            <div class="nombre-creador">${nombre}</div>
+            <div class="calificacion">Calificación: ⭐ ${calificacion}</div>
+            <div class="fecha">${new Date(c.fechaCreacion).toLocaleDateString()}</div>
+            <div class="botones-reaccion">
+              <button class="btn-like" onclick="reaccion('${c._id}', 1)">Me gusta</button>
+              <button class="btn-dislike" onclick="reaccion('${c._id}', -1)">No me gusta</button>
+            </div>
+          `;
+          contenedor.appendChild(card);
+        });
+
+        iniciarAutoScroll();
+
+      } catch (error) {
+        console.error('Error al cargar camisetas:', error);
+      }
+    }
+
+    // Enviar voto a la API y actualizar carrusel
+    async function reaccion(id, valor) {
+      try {
+        const resp = await fetch(`/api/camisetas/vota/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + localStorage.getItem('token')
+          },
+          body: JSON.stringify({ calificacion: valor }) // 1 o -1
+        });
+
+        if (resp.ok) {
+          const result = await resp.json();
+          console.log('Actualización exitosa:', result);
+          await cargarCamisetas(); // Refrescar lista después del voto
+        } else {
+          const error = await resp.json();
+          alert('Error al votar: ' + error.error);
+        }
+      } catch (error) {
+        alert('Error al conectar con el servidor');
+      }
+    }
+
+    // --- Carrusel automático ---
+    function iniciarAutoScroll() {
+      const carousel = document.getElementById('carousel');
+      if (autoScrollInterval) clearInterval(autoScrollInterval);
+
+      let scrollStep = 240; // Aproximadamente el ancho de una card + gap
+      let delay = 2500; // ms
+
+      autoScrollInterval = setInterval(() => {
+        if (autoScrollPaused) return;
+        // Si está al final, vuelve al inicio
+        if (carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth - 5) {
+          carousel.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          carousel.scrollBy({ left: scrollStep, behavior: 'smooth' });
+        }
+      }, delay);
+    }
+
+    // Pausar auto-scroll cuando el usuario interactúa
+    document.addEventListener('DOMContentLoaded', () => {
+      const carousel = document.getElementById('carousel');
+      carousel.addEventListener('mouseenter', () => { autoScrollPaused = true; });
+      carousel.addEventListener('mouseleave', () => { autoScrollPaused = false; });
+      carousel.addEventListener('touchstart', () => { autoScrollPaused = true; });
+      carousel.addEventListener('touchend', () => { autoScrollPaused = false; });
+    });
+
+    cargarCamisetas(); // Cargar camisetas al inicio
+  </script>
+</body>
+</html>
